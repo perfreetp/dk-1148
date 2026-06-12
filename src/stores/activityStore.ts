@@ -14,11 +14,12 @@ interface ActivityState {
   };
   fetchActivities: () => Promise<void>;
   getActivityById: (id: string) => Promise<Activity | null>;
-  createActivity: (data: CreateActivityDTO, creator: User) => Promise<void>;
+  createActivity: (data: CreateActivityDTO, creator: User) => Promise<Activity>;
   joinActivity: (activityId: string, user: User) => Promise<void>;
   leaveActivity: (activityId: string, userId: string) => Promise<void>;
   setFilter: (filter: Partial<ActivityState['filter']>) => void;
   getMyActivities: (userId: string) => Activity[];
+  clearCurrentActivity: () => void;
 }
 
 export const useActivityStore = create<ActivityState>()(
@@ -30,12 +31,14 @@ export const useActivityStore = create<ActivityState>()(
       filter: {},
 
       fetchActivities: async () => {
+        if (get().isLoading) return;
+        
         set({ isLoading: true });
         await new Promise(resolve => setTimeout(resolve, 300));
         
         const { activities } = get();
         if (activities.length === 0) {
-          set({ activities: mockActivities, isLoading: false });
+          set({ activities: [...mockActivities], isLoading: false });
         } else {
           set({ isLoading: false });
         }
@@ -43,19 +46,15 @@ export const useActivityStore = create<ActivityState>()(
 
       getActivityById: async (id: string) => {
         const { activities } = get();
-        let activity = activities.find(a => a.id === id);
         
-        if (!activity && mockActivities.length > 0) {
-          activity = mockActivities.find(a => a.id === id);
-        }
+        let activity = activities.find(a => a.id === id);
         
         if (activity) {
           set({ currentActivity: activity });
           return activity;
         }
         
-        const { activities: currentActivities } = get();
-        activity = currentActivities.find(a => a.id === id);
+        activity = mockActivities.find(a => a.id === id);
         
         if (activity) {
           set({ currentActivity: activity });
@@ -78,48 +77,64 @@ export const useActivityStore = create<ActivityState>()(
           createdAt: new Date().toISOString().split('T')[0]
         };
 
-        set(state => ({
-          activities: [newActivity, ...state.activities],
-          currentActivity: newActivity,
-          isLoading: false
-        }));
+        set(state => {
+          const updatedActivities = [newActivity, ...state.activities];
+          return {
+            activities: updatedActivities,
+            currentActivity: newActivity,
+            isLoading: false
+          };
+        });
+
+        return newActivity;
       },
 
       joinActivity: async (activityId: string, user: User) => {
-        set(state => ({
-          activities: state.activities.map(activity =>
-            activity.id === activityId &&
-            activity.currentMembers.length < activity.maxMembers &&
-            !activity.currentMembers.find(m => m.id === user.id)
-              ? { ...activity, currentMembers: [...activity.currentMembers, user] }
-              : activity
-          ),
-          currentActivity: state.currentActivity?.id === activityId
-            ? {
-                ...state.currentActivity,
-                currentMembers: state.currentActivity.currentMembers.length < state.currentActivity.maxMembers &&
-                               !state.currentActivity.currentMembers.find(m => m.id === user.id)
-                  ? [...state.currentActivity.currentMembers, user]
-                  : state.currentActivity.currentMembers
-              }
-            : state.currentActivity
-        }));
+        set(state => {
+          const updatedActivities = state.activities.map(activity => {
+            if (activity.id === activityId &&
+                activity.currentMembers.length < activity.maxMembers &&
+                !activity.currentMembers.find(m => m.id === user.id)) {
+              return {
+                ...activity,
+                currentMembers: [...activity.currentMembers, user]
+              };
+            }
+            return activity;
+          });
+
+          const updatedCurrentActivity = state.currentActivity?.id === activityId
+            ? updatedActivities.find(a => a.id === activityId) || state.currentActivity
+            : state.currentActivity;
+
+          return {
+            activities: updatedActivities,
+            currentActivity: updatedCurrentActivity
+          };
+        });
       },
 
       leaveActivity: async (activityId: string, userId: string) => {
-        set(state => ({
-          activities: state.activities.map(activity =>
-            activity.id === activityId
-              ? { ...activity, currentMembers: activity.currentMembers.filter(m => m.id !== userId) }
-              : activity
-          ),
-          currentActivity: state.currentActivity?.id === activityId
-            ? {
-                ...state.currentActivity,
-                currentMembers: state.currentActivity.currentMembers.filter(m => m.id !== userId)
-              }
-            : state.currentActivity
-        }));
+        set(state => {
+          const updatedActivities = state.activities.map(activity => {
+            if (activity.id === activityId) {
+              return {
+                ...activity,
+                currentMembers: activity.currentMembers.filter(m => m.id !== userId)
+              };
+            }
+            return activity;
+          });
+
+          const updatedCurrentActivity = state.currentActivity?.id === activityId
+            ? updatedActivities.find(a => a.id === activityId) || state.currentActivity
+            : state.currentActivity;
+
+          return {
+            activities: updatedActivities,
+            currentActivity: updatedCurrentActivity
+          };
+        });
       },
 
       setFilter: (filter) => {
@@ -132,6 +147,10 @@ export const useActivityStore = create<ActivityState>()(
         return get().activities.filter(
           a => a.creator.id === userId || a.currentMembers.some(m => m.id === userId)
         );
+      },
+
+      clearCurrentActivity: () => {
+        set({ currentActivity: null });
       }
     }),
     {

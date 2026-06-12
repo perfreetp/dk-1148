@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Users, Clock, ArrowLeft, Share2, MessageCircle } from 'lucide-react';
+import { Calendar, MapPin, Users, ArrowLeft, Share2, MessageCircle } from 'lucide-react';
 import { useActivityStore } from '../stores/activityStore';
 import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/common/Button';
@@ -17,29 +17,47 @@ const ActivityDetailPage: React.FC = () => {
   const { user } = useAuthStore();
   const [isJoining, setIsJoining] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadActivity = async () => {
-      if (!id) return;
-      
-      setIsLoading(true);
-      
+  const loadActivity = useCallback(async () => {
+    if (!id) {
+      setError('活动ID不存在');
+      setIsLoading(false);
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
       if (activities.length === 0) {
         await fetchActivities();
       }
       
-      const activity = activities.find(a => a.id === id);
-      if (activity) {
+      const foundActivity = activities.find(a => a.id === id);
+      
+      if (foundActivity) {
         getActivityById(id);
-      } else {
-        await getActivityById(id);
+        setIsLoading(false);
+        return;
       }
       
+      const loadedActivity = await getActivityById(id);
+      
+      if (!loadedActivity) {
+        setError('活动不存在或已被删除');
+      }
+    } catch (err) {
+      console.error('加载活动失败:', err);
+      setError('加载失败，请重试');
+    } finally {
       setIsLoading(false);
-    };
-    
-    loadActivity();
+    }
   }, [id, activities.length]);
+
+  useEffect(() => {
+    loadActivity();
+  }, [loadActivity]);
 
   if (isLoading) {
     return (
@@ -52,12 +70,20 @@ const ActivityDetailPage: React.FC = () => {
     );
   }
 
-  if (!currentActivity) {
+  if (error || !currentActivity) {
     return (
       <div className="min-h-screen bg-bg-primary flex items-center justify-center">
         <div className="text-center">
-          <p className="text-text-muted mb-4">活动不存在或已被删除</p>
-          <Button onClick={() => navigate('/activities')}>返回活动列表</Button>
+          <div className="text-6xl mb-4">🔍</div>
+          <p className="text-text-primary font-medium mb-2">
+            {error || '活动不存在'}
+          </p>
+          <p className="text-text-muted text-sm mb-4">
+            抱歉，您访问的活动可能已下架或不存在
+          </p>
+          <Button onClick={() => navigate('/activities')}>
+            返回活动列表
+          </Button>
         </div>
       </div>
     );
@@ -82,6 +108,8 @@ const ActivityDetailPage: React.FC = () => {
           await joinActivity(currentActivity.id, user);
         }
       }
+    } catch (err) {
+      console.error('报名操作失败:', err);
     } finally {
       setIsJoining(false);
     }

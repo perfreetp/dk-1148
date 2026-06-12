@@ -10,6 +10,7 @@ import { CardSkeleton, ActivitySkeleton } from '../components/common/Skeleton';
 import { interestCategories } from '../data/mockData';
 import { Tag } from '../components/common/Tag';
 import { Avatar } from '../components/common/Avatar';
+import { Card } from '../components/common/Card';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -137,7 +138,11 @@ const HomePage: React.FC = () => {
               </>
             ) : displayedUsers.length === 0 ? (
               <Card className="p-8 text-center">
-                <p className="text-text-muted">暂无符合条件的同好</p>
+                <p className="text-text-muted">
+                  {selectedInterest 
+                    ? `暂无${selectedInterest}相关的同好` 
+                    : '暂无推荐的同好'}
+                </p>
               </Card>
             ) : (
               displayedUsers.map((userItem) => (
@@ -167,7 +172,11 @@ const HomePage: React.FC = () => {
               </>
             ) : displayedActivities.length === 0 ? (
               <Card className="col-span-full p-8 text-center">
-                <p className="text-text-muted">暂无符合条件的活动</p>
+                <p className="text-text-muted">
+                  {selectedInterest 
+                    ? `暂无${selectedInterest}相关的活动` 
+                    : '暂无活动'}
+                </p>
               </Card>
             ) : (
               displayedActivities.map((activity) => (

@@ -25,12 +25,24 @@ const ActivitiesPage: React.FC = () => {
     <div className="min-h-screen bg-bg-primary pb-20">
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-primary/10">
         <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-display font-bold text-text-primary">
-            活动列表
-          </h1>
-          <p className="text-sm text-text-muted mt-1">
-            发现精彩活动，找到志同道合的伙伴
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-display font-bold text-text-primary">
+                活动列表
+              </h1>
+              <p className="text-sm text-text-muted mt-1">
+                发现精彩活动，找到志同道合的伙伴
+              </p>
+            </div>
+            {selectedTag && (
+              <button
+                onClick={() => setSelectedTag(null)}
+                className="text-sm text-accent hover:text-accent-dark transition-colors"
+              >
+                清除筛选
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -66,10 +78,15 @@ const ActivitiesPage: React.FC = () => {
             </>
           ) : filteredActivities.length === 0 ? (
             <Card className="p-8 text-center">
-              <p className="text-text-muted">暂无符合条件的活动</p>
+              <div className="text-6xl mb-4">📅</div>
+              <p className="text-text-muted mb-4">
+                {selectedTag 
+                  ? `暂无${selectedTag}相关的活动` 
+                  : '暂无活动'}
+              </p>
               <button
                 onClick={() => navigate('/activities/create')}
-                className="mt-4 text-accent hover:text-accent-dark"
+                className="text-accent hover:text-accent-dark transition-colors"
               >
                 发起第一个活动
               </button>

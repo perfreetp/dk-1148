@@ -13,12 +13,15 @@ import { getDistanceFromUser } from '../utils/locationUtils';
 const ActivityDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getActivityById, currentActivity, joinActivity, leaveActivity } = useActivityStore();
+  const { activities, getActivityById, joinActivity, leaveActivity } = useActivityStore();
   const { user } = useAuthStore();
   const [isJoining, setIsJoining] = useState(false);
 
+  const activity = activities.find(a => a.id === id);
+  const currentActivity = activity || null;
+
   useEffect(() => {
-    if (id) {
+    if (id && !activity) {
       getActivityById(id);
     }
   }, [id]);
@@ -46,7 +49,9 @@ const ActivityDetailPage: React.FC = () => {
       if (isMember) {
         await leaveActivity(currentActivity.id, user.id);
       } else {
-        await joinActivity(currentActivity.id, user);
+        if (!isFull) {
+          await joinActivity(currentActivity.id, user);
+        }
       }
     } finally {
       setIsJoining(false);
@@ -125,7 +130,7 @@ const ActivityDetailPage: React.FC = () => {
                   {currentActivity.currentMembers.length} / {currentActivity.maxMembers} 人
                 </p>
                 <p className="text-sm text-text-muted">
-                  {isFull ? '名额已满' : '还有空位'}
+                  {isFull ? '名额已满' : `还有 ${currentActivity.maxMembers - currentActivity.currentMembers.length} 个名额`}
                 </p>
               </div>
             </div>
@@ -164,7 +169,14 @@ const ActivityDetailPage: React.FC = () => {
                 {currentActivity.creator.location}
               </p>
             </div>
-            <Button size="sm" variant="ghost">
+            <Button 
+              size="sm" 
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/messages/${currentActivity.creator.id}`);
+              }}
+            >
               <MessageCircle className="w-4 h-4 mr-1" />
               私信
             </Button>
@@ -176,40 +188,50 @@ const ActivityDetailPage: React.FC = () => {
             已报名成员 ({currentActivity.currentMembers.length})
           </h2>
           <div className="space-y-3">
-            {currentActivity.currentMembers.map((member) => (
-              <div
-                key={member.id}
-                className="flex items-center gap-3 cursor-pointer"
-                onClick={() => navigate(`/profile/${member.id}`)}
-              >
-                <Avatar
-                  src={member.avatar}
-                  alt={member.username}
-                  size="md"
-                  level={member.interests[0]?.level}
-                  showBadge
-                />
-                <div className="flex-1">
-                  <p className="font-medium text-text-primary">{member.username}</p>
-                  <p className="text-sm text-text-muted">
-                    {member.interests[0]?.category} · {member.interests[0]?.level}
-                  </p>
+            {currentActivity.currentMembers.length === 0 ? (
+              <p className="text-text-muted text-center py-4">还没有人报名，快来成为第一个吧！</p>
+            ) : (
+              currentActivity.currentMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center gap-3 cursor-pointer"
+                  onClick={() => navigate(`/profile/${member.id}`)}
+                >
+                  <Avatar
+                    src={member.avatar}
+                    alt={member.username}
+                    size="md"
+                    level={member.interests[0]?.level}
+                    showBadge
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium text-text-primary">{member.username}</p>
+                    <p className="text-sm text-text-muted">
+                      {member.interests[0]?.category} · {member.interests[0]?.level}
+                    </p>
+                  </div>
+                  {member.id === currentActivity.creator.id && (
+                    <Tag variant="primary" size="sm">组织者</Tag>
+                  )}
                 </div>
-                {member.id === currentActivity.creator.id && (
-                  <Tag variant="primary" size="sm">组织者</Tag>
-                )}
-              </div>
-            ))}
+              ))
+            )}
           </div>
+          
+          {!isFull && currentActivity.currentMembers.length > 0 && (
+            <p className="text-sm text-accent mt-4 text-center">
+              还差 {currentActivity.maxMembers - currentActivity.currentMembers.length} 人成局，快来报名吧！
+            </p>
+          )}
         </Card>
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-primary/10 p-4">
-        <div className="container mx-auto flex gap-3">
+        <div className="container mx-auto max-w-md flex gap-3">
           <Button
             variant="secondary"
             className="flex-1"
-            onClick={() => navigate('/messages')}
+            onClick={() => navigate(`/messages/${currentActivity.creator.id}`)}
           >
             <MessageCircle className="w-5 h-5 mr-2" />
             咨询

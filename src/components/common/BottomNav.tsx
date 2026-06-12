@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, Map, Calendar, Image, User } from 'lucide-react';
+import { Home, Map, Calendar, Image, MessageCircle } from 'lucide-react';
 import { useMessageStore } from '../../stores/messageStore';
 
 export const BottomNav: React.FC = () => {
@@ -13,11 +13,11 @@ export const BottomNav: React.FC = () => {
     { path: '/map', icon: Map, label: '地图' },
     { path: '/activities', icon: Calendar, label: '活动' },
     { path: '/wall', icon: Image, label: '作品墙' },
-    { path: '/profile', icon: User, label: '我的' }
+    { path: '/messages', icon: MessageCircle, label: '消息' }
   ];
 
   const isActive = (path: string) => {
-    return location.pathname === path;
+    return location.pathname === path || location.pathname.startsWith(path + '/');
   };
 
   return (

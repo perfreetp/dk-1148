@@ -9,6 +9,7 @@ import { UserCard } from '../components/user/UserCard';
 import { CardSkeleton, ActivitySkeleton } from '../components/common/Skeleton';
 import { interestCategories } from '../data/mockData';
 import { Tag } from '../components/common/Tag';
+import { Avatar } from '../components/common/Avatar';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
@@ -26,12 +27,14 @@ const HomePage: React.FC = () => {
     ? activities.filter(a => a.tags?.includes(selectedInterest))
     : activities;
 
-  const displayedActivities = filteredActivities.slice(0, 4);
-  const displayedUsers = selectedInterest
+  const filteredUsers = selectedInterest
     ? recommendedUsers.filter(u => 
         u.interests.some(i => i.category === selectedInterest)
       )
-    : recommendedUsers.slice(0, 4);
+    : recommendedUsers;
+
+  const displayedActivities = filteredActivities.slice(0, 4);
+  const displayedUsers = filteredUsers.slice(0, 4);
 
   return (
     <div className="min-h-screen bg-bg-primary pb-20">
@@ -82,8 +85,23 @@ const HomePage: React.FC = () => {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="section-title">探索兴趣</h2>
+            {selectedInterest && (
+              <button
+                onClick={() => setSelectedInterest(null)}
+                className="text-sm text-accent hover:text-accent-dark transition-colors"
+              >
+                清除筛选
+              </button>
+            )}
           </div>
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+            <Tag
+              variant={selectedInterest === null ? 'primary' : 'default'}
+              className="cursor-pointer whitespace-nowrap flex-shrink-0"
+              onClick={() => setSelectedInterest(null)}
+            >
+              全部
+            </Tag>
             {interestCategories.map((interest) => (
               <Tag
                 key={interest.value}
@@ -101,7 +119,9 @@ const HomePage: React.FC = () => {
 
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="section-title">推荐同好</h2>
+            <h2 className="section-title">
+              推荐同好 {selectedInterest && `· ${selectedInterest}`}
+            </h2>
             <button
               onClick={() => navigate('/users')}
               className="text-sm text-accent hover:text-accent-dark transition-colors"
@@ -115,6 +135,10 @@ const HomePage: React.FC = () => {
                 <CardSkeleton />
                 <CardSkeleton />
               </>
+            ) : displayedUsers.length === 0 ? (
+              <Card className="p-8 text-center">
+                <p className="text-text-muted">暂无符合条件的同好</p>
+              </Card>
             ) : (
               displayedUsers.map((userItem) => (
                 <UserCard key={userItem.id} user={userItem} />
@@ -125,7 +149,9 @@ const HomePage: React.FC = () => {
 
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="section-title">近期活动</h2>
+            <h2 className="section-title">
+              近期活动 {selectedInterest && `· ${selectedInterest}`}
+            </h2>
             <button
               onClick={() => navigate('/activities')}
               className="text-sm text-accent hover:text-accent-dark transition-colors"
@@ -139,6 +165,10 @@ const HomePage: React.FC = () => {
                 <ActivitySkeleton />
                 <ActivitySkeleton />
               </>
+            ) : displayedActivities.length === 0 ? (
+              <Card className="col-span-full p-8 text-center">
+                <p className="text-text-muted">暂无符合条件的活动</p>
+              </Card>
             ) : (
               displayedActivities.map((activity) => (
                 <ActivityCard key={activity.id} activity={activity} />
@@ -150,7 +180,7 @@ const HomePage: React.FC = () => {
 
       <button
         onClick={() => navigate('/activities/create')}
-        className="fixed bottom-24 right-4 w-14 h-14 bg-highlight text-white rounded-full shadow-warm-lg flex items-center justify-center hover:bg-highlight-dark transition-all duration-150 active:scale-95"
+        className="fixed bottom-24 right-4 w-14 h-14 bg-highlight text-white rounded-full shadow-warm-lg flex items-center justify-center hover:bg-highlight-dark transition-all duration-150 active:scale-95 z-40"
       >
         <Plus className="w-6 h-6" />
       </button>
@@ -159,5 +189,3 @@ const HomePage: React.FC = () => {
 };
 
 export default HomePage;
-
-import { Avatar } from '../components/common/Avatar';

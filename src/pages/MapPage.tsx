@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import { Filter, List } from 'lucide-react';
+import { Filter, List, Plus } from 'lucide-react';
 import { mockMapMarkers, mockActivities } from '../data/mockData';
 import { Card } from '../components/common/Card';
-import { Avatar } from '../components/common/Avatar';
-import { Tag } from '../components/common/Tag';
 import { Button } from '../components/common/Button';
 import { ActivityCard } from '../components/activity/ActivityCard';
+import { Tag } from '../components/common/Tag';
+import { interestCategories } from '../data/mockData';
 import 'leaflet/dist/leaflet.css';
 
 const MapCenter: React.FC<{ center: [number, number] }> = ({ center }) => {
@@ -25,6 +25,21 @@ const MapPage: React.FC = () => {
   const [showList, setShowList] = useState(false);
   const [center] = useState<[number, number]>([31.2304, 121.4737]);
   const [selectedMarker, setSelectedMarker] = useState<typeof mockMapMarkers[0] | null>(null);
+  const [selectedInterest, setSelectedInterest] = useState<string | null>(null);
+
+  const filteredMarkers = selectedInterest
+    ? mockMapMarkers.filter(m => {
+        const activity = mockActivities.find(a => 
+          a.title === m.title || m.title.includes(a.tags?.[0] || '')
+        );
+        if (!activity) return true;
+        return activity.tags?.includes(selectedInterest);
+      })
+    : mockMapMarkers;
+
+  const filteredActivities = selectedInterest
+    ? mockActivities.filter(a => a.tags?.includes(selectedInterest))
+    : mockActivities;
 
   return (
     <div className="h-screen relative">
@@ -41,7 +56,7 @@ const MapPage: React.FC = () => {
         
         <MapCenter center={center} />
         
-        {mockMapMarkers.map((marker) => (
+        {filteredMarkers.map((marker) => (
           <Marker
             key={marker.id}
             position={[marker.lat, marker.lng]}
@@ -58,9 +73,12 @@ const MapPage: React.FC = () => {
                   className="mt-2 w-full"
                   onClick={() => {
                     if (marker.type === 'activity') {
-                      navigate(`/activities/${marker.id.replace('marker', '')}`);
+                      const activity = mockActivities.find(a => a.title === marker.title);
+                      if (activity) {
+                        navigate(`/activities/${activity.id}`);
+                      }
                     } else {
-                      navigate(`/profile/${marker.id}`);
+                      navigate(`/profile/${marker.id.replace('marker', '')}`);
                     }
                   }}
                 >
@@ -99,24 +117,49 @@ const MapPage: React.FC = () => {
       </div>
 
       <div className="absolute top-28 left-4 right-4 z-[1000] flex gap-2 overflow-x-auto scrollbar-hide pb-2">
-        <Tag variant="primary">全部</Tag>
-        <Tag variant="default">观鸟</Tag>
-        <Tag variant="default">拼模型</Tag>
-        <Tag variant="default">独立电影</Tag>
-        <Tag variant="default">旧书交换</Tag>
-        <Tag variant="default">城市速写</Tag>
+        <Tag
+          variant={selectedInterest === null ? 'primary' : 'default'}
+          onClick={() => setSelectedInterest(null)}
+          className="cursor-pointer whitespace-nowrap flex-shrink-0"
+        >
+          全部
+        </Tag>
+        {interestCategories.map((interest) => (
+          <Tag
+            key={interest.value}
+            variant={selectedInterest === interest.value ? 'primary' : 'default'}
+            onClick={() => setSelectedInterest(
+              selectedInterest === interest.value ? null : interest.value
+            )}
+            className="cursor-pointer whitespace-nowrap flex-shrink-0"
+          >
+            {interest.label}
+          </Tag>
+        ))}
       </div>
 
       {showList && (
         <div className="absolute bottom-20 left-0 right-0 z-[1000] bg-white rounded-t-3xl shadow-warm-lg max-h-[50vh] overflow-y-auto">
           <div className="p-4">
-            <h2 className="font-display font-bold text-text-primary mb-4">
-              附近活动 ({mockActivities.length})
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display font-bold text-text-primary">
+                附近活动 {selectedInterest && `· ${selectedInterest}`} ({filteredActivities.length})
+              </h2>
+              <button
+                onClick={() => setShowList(false)}
+                className="text-sm text-text-muted hover:text-primary"
+              >
+                收起
+              </button>
+            </div>
             <div className="space-y-4">
-              {mockActivities.map((activity) => (
-                <ActivityCard key={activity.id} activity={activity} />
-              ))}
+              {filteredActivities.length === 0 ? (
+                <p className="text-center text-text-muted py-8">暂无符合条件的活动</p>
+              ) : (
+                filteredActivities.map((activity) => (
+                  <ActivityCard key={activity.id} activity={activity} />
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -126,7 +169,7 @@ const MapPage: React.FC = () => {
         onClick={() => navigate('/activities/create')}
         className="absolute bottom-24 right-4 z-[1000] w-14 h-14 bg-highlight text-white rounded-full shadow-warm-lg flex items-center justify-center hover:bg-highlight-dark transition-all duration-150 active:scale-95"
       >
-        +
+        <Plus className="w-6 h-6" />
       </button>
     </div>
   );

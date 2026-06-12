@@ -14,11 +14,11 @@ interface ActivityCardProps {
 export const ActivityCard: React.FC<ActivityCardProps> = ({ activity }) => {
   const navigate = useNavigate();
 
-  const statusColors = {
+  const statusColors: Record<string, 'default' | 'primary' | 'highlight' | 'success' | 'warning'> = {
     '报名中': 'success',
     '已确认': 'primary',
     '进行中': 'highlight',
-    '已完成': 'default' as const
+    '已完成': 'default'
   };
 
   return (

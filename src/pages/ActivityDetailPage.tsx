@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Users, ArrowLeft, Share2, MessageCircle } from 'lucide-react';
+import { Calendar, MapPin, Users, ArrowLeft, Share2, MessageCircle, Bell, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { useActivityStore } from '../stores/activityStore';
 import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/common/Button';
@@ -92,6 +92,8 @@ const ActivityDetailPage: React.FC = () => {
   const isCreator = user?.id === currentActivity.creator.id;
   const isMember = currentActivity.currentMembers.some(m => m.id === user?.id);
   const isFull = currentActivity.currentMembers.length >= currentActivity.maxMembers;
+  const remainingSpots = currentActivity.maxMembers - currentActivity.currentMembers.length;
+  const isFormed = currentActivity.currentMembers.length >= 2;
 
   const handleJoinOrLeave = async () => {
     if (!user) {
@@ -187,10 +189,36 @@ const ActivityDetailPage: React.FC = () => {
                   {currentActivity.currentMembers.length} / {currentActivity.maxMembers} 人
                 </p>
                 <p className="text-sm text-text-muted">
-                  {isFull ? '名额已满' : `还有 ${currentActivity.maxMembers - currentActivity.currentMembers.length} 个名额`}
+                  {isFull ? '名额已满' : `还有 ${remainingSpots} 个名额`}
                 </p>
               </div>
             </div>
+          </div>
+
+          <div className="bg-accent/5 rounded-xl p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              {isFormed ? (
+                <>
+                  <CheckCircle className="w-5 h-5 text-success" />
+                  <span className="text-sm font-medium text-success">
+                    {isFull ? '活动已成型，可以开始了！' : '已满足最低成局人数'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Clock className="w-5 h-5 text-warning" />
+                  <span className="text-sm font-medium text-warning">
+                    还需 {2 - currentActivity.currentMembers.length} 人即可成局
+                  </span>
+                </>
+              )}
+            </div>
+            {isMember && (
+              <div className="flex items-center gap-2 text-sm text-accent">
+                <Bell className="w-4 h-4" />
+                <span>已报名，将收到活动开始提醒</span>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -241,43 +269,67 @@ const ActivityDetailPage: React.FC = () => {
         </Card>
 
         <Card className="p-6 mb-4">
-          <h2 className="font-display font-bold text-text-primary mb-4">
-            已报名成员 ({currentActivity.currentMembers.length})
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display font-bold text-text-primary">
+              已报名成员 ({currentActivity.currentMembers.length})
+            </h2>
+            {!isFull && (
+              <Tag variant="success" size="sm">
+                剩余{remainingSpots}名额
+              </Tag>
+            )}
+          </div>
+          
           <div className="space-y-3">
             {currentActivity.currentMembers.length === 0 ? (
-              <p className="text-text-muted text-center py-4">还没有人报名，快来成为第一个吧！</p>
+              <div className="text-center py-6">
+                <AlertCircle className="w-12 h-12 text-text-muted mx-auto mb-3" />
+                <p className="text-text-muted mb-2">还没有人报名</p>
+                <p className="text-sm text-text-muted">快来成为第一个参与者吧！</p>
+              </div>
             ) : (
-              currentActivity.currentMembers.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center gap-3 cursor-pointer"
-                  onClick={() => navigate(`/profile/${member.id}`)}
-                >
-                  <Avatar
-                    src={member.avatar}
-                    alt={member.username}
-                    size="md"
-                    level={member.interests[0]?.level}
-                    showBadge
-                  />
-                  <div className="flex-1">
-                    <p className="font-medium text-text-primary">{member.username}</p>
-                    <p className="text-sm text-text-muted">
-                      {member.interests[0]?.category} · {member.interests[0]?.level}
-                    </p>
+              <>
+                {currentActivity.currentMembers.map((member, index) => (
+                  <div
+                    key={member.id}
+                    className="flex items-center gap-3"
+                  >
+                    <div className="relative">
+                      <Avatar
+                        src={member.avatar}
+                        alt={member.username}
+                        size="md"
+                        level={member.interests[0]?.level}
+                        showBadge
+                      />
+                      {isMember && member.id === user?.id && (
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-success text-white rounded-full flex items-center justify-center">
+                          <CheckCircle className="w-3 h-3" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-text-primary">{member.username}</p>
+                      <p className="text-sm text-text-muted">
+                        {member.interests[0]?.category} · {member.interests[0]?.level}
+                      </p>
+                    </div>
+                    {index === 0 && (
+                      <Tag variant="primary" size="sm">组织者</Tag>
+                    )}
+                    {isMember && member.id === user?.id && (
+                      <Tag variant="success" size="sm">我</Tag>
+                    )}
                   </div>
-                  {member.id === currentActivity.creator.id && (
-                    <Tag variant="primary" size="sm">组织者</Tag>
-                  )}
-                </div>
-              ))
+                ))}
+              </>
             )}
           </div>
           
           {!isFull && currentActivity.currentMembers.length > 0 && (
-            <p className="text-sm text-accent mt-4 text-center">
-              还差 {currentActivity.maxMembers - currentActivity.currentMembers.length} 人成局，快来报名吧！
+            <p className="text-sm text-accent mt-4 text-center flex items-center justify-center gap-1">
+              <Users className="w-4 h-4" />
+              还差 {remainingSpots} 人成局，快来报名吧！
             </p>
           )}
         </Card>
@@ -301,7 +353,7 @@ const ActivityDetailPage: React.FC = () => {
               loading={isJoining}
               disabled={!isMember && isFull}
             >
-              {isMember ? '取消报名' : isFull ? '已满' : '立即报名'}
+              {isMember ? '取消报名' : isFull ? '已满' : isFormed ? '立即报名' : `还差${2 - currentActivity.currentMembers.length}人`}
             </Button>
           )}
         </div>

@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Users, Tag as TagIcon, Clock } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, Clock, X, Check } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useAuthStore } from '../stores/authStore';
 import { useActivityStore } from '../stores/activityStore';
 import { Button } from '../components/common/Button';
@@ -8,6 +11,18 @@ import { Input } from '../components/common/Input';
 import { Card } from '../components/common/Card';
 import { interestCategories } from '../data/mockData';
 import { ActivityType } from '../types';
+
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+const DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 const CreateActivityPage: React.FC = () => {
   const navigate = useNavigate();
@@ -19,11 +34,82 @@ const CreateActivityPage: React.FC = () => {
   const [activityType, setActivityType] = useState<ActivityType>('小组');
   const [maxMembers, setMaxMembers] = useState(4);
   const [locationName, setLocationName] = useState('');
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [showLocationPreview, setShowLocationPreview] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const locationDatabase = useMemo(() => ({
+    '世纪公园': [31.2194, 121.5508] as [number, number],
+    '静安公园': [31.2285, 121.4545] as [number, number],
+    '徐家汇公园': [31.2015, 121.4385] as [number, number],
+    '上海植物园': [31.1500, 121.4333] as [number, number],
+    '鲁迅公园': [31.2667, 121.4833] as [number, number],
+    '人民公园': [31.2353, 121.4753] as [number, number],
+    '中山公园': [31.2253, 121.4233] as [number, number],
+    '延中公园': [31.2285, 121.4512] as [number, number],
+    '淮海公园': [31.2208, 121.4695] as [number, number],
+    '太平公园': [31.2088, 121.4512] as [number, number],
+    '古城公园': [31.2350, 121.4850] as [number, number],
+    '长风公园': [31.2283, 121.3950] as [number, number],
+    '闸北公园': [31.2583, 121.4533] as [number, number],
+    '杨浦公园': [31.2683, 121.5200] as [number, number],
+    '虹口公园': [31.2667, 121.4833] as [number, number],
+    '衡山路': [31.2150, 121.4433] as [number, number],
+    '武康路': [31.2050, 121.4383] as [number, number],
+    '安福路': [31.2200, 121.4450] as [number, number],
+    '思南路': [31.2183, 121.4750] as [number, number],
+    '绍兴路': [31.2150, 121.4650] as [number, number],
+  }), []);
+
+  const geocodeLocation = useCallback((name: string): { lat: number; lng: number } | null => {
+    const normalizedName = name.trim();
+    if (locationDatabase[normalizedName]) {
+      return {
+        lat: locationDatabase[normalizedName][0],
+        lng: locationDatabase[normalizedName][1]
+      };
+    }
+    
+    const match = Object.keys(locationDatabase).find(key => 
+      key.includes(normalizedName) || normalizedName.includes(key)
+    );
+    
+    if (match) {
+      return {
+        lat: locationDatabase[match][0],
+        lng: locationDatabase[match][1]
+      };
+    }
+    
+    return {
+      lat: 31.2304 + (Math.random() - 0.5) * 0.1,
+      lng: 121.4737 + (Math.random() - 0.5) * 0.1
+    };
+  }, [locationDatabase]);
+
+  useEffect(() => {
+    if (locationName.length >= 2) {
+      const timer = setTimeout(() => {
+        setIsLocating(true);
+        setTimeout(() => {
+          const coords = geocodeLocation(locationName);
+          setLocationCoords(coords);
+          setIsLocating(false);
+          setShowLocationPreview(true);
+        }, 500);
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setLocationCoords(null);
+      setShowLocationPreview(false);
+    }
+  }, [locationName, geocodeLocation]);
 
   if (!user) {
     navigate('/login');
@@ -77,8 +163,8 @@ const CreateActivityPage: React.FC = () => {
           endTime: endDateTime,
           location: {
             name: locationName,
-            lat: 31.2304 + (Math.random() - 0.5) * 0.1,
-            lng: 121.4737 + (Math.random() - 0.5) * 0.1
+            lat: locationCoords?.lat || 31.2304,
+            lng: locationCoords?.lng || 121.4737
           },
           maxMembers,
           tags: selectedTags
@@ -221,6 +307,64 @@ const CreateActivityPage: React.FC = () => {
                 icon={<MapPin className="w-5 h-5" />}
                 error={errors.locationName}
               />
+
+              {isLocating && (
+                <div className="text-sm text-text-muted flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  正在定位...
+                </div>
+              )}
+
+              {showLocationPreview && locationCoords && (
+                <div className="mt-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-text-primary">位置预览</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowLocationPreview(false)}
+                      className="text-text-muted hover:text-text-primary"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="relative h-40 rounded-xl overflow-hidden border border-primary/20">
+                    <MapContainer
+                      center={[locationCoords.lat, locationCoords.lng]}
+                      zoom={15}
+                      className="h-full w-full"
+                      zoomControl={false}
+                      dragging={false}
+                      scrollWheelZoom={false}
+                    >
+                      <TileLayer
+                        attribution=''
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <Marker position={[locationCoords.lat, locationCoords.lng]}>
+                        <Popup>
+                          <div className="text-center">
+                            <p className="font-medium">{locationName}</p>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    </MapContainer>
+                    <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs text-text-primary flex items-center gap-1 shadow-sm">
+                      <MapPin className="w-3 h-3 text-accent" />
+                      <span>{locationName}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-text-muted mt-2 flex items-center gap-1">
+                    <Check className="w-3 h-3 text-success" />
+                    位置已标记，发布后将在地图上显示
+                  </p>
+                </div>
+              )}
+
+              {!showLocationPreview && locationName.length > 0 && !isLocating && locationName.length < 2 && (
+                <p className="text-xs text-text-muted mt-1">
+                  输入至少2个字符查看位置预览
+                </p>
+              )}
             </div>
           </Card>
 

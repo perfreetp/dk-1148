@@ -17,12 +17,16 @@ const HomePage: React.FC = () => {
   const { user } = useAuthStore();
   const { activities, isLoading: activitiesLoading, fetchActivities } = useActivityStore();
   const { recommendedUsers, isLoading: usersLoading, fetchRecommendedUsers } = useInterestStore();
+  
   const [selectedInterest, setSelectedInterest] = useState<string | null>(null);
+  const [isFiltering, setIsFiltering] = useState(false);
 
   useEffect(() => {
     fetchActivities();
     fetchRecommendedUsers();
   }, []);
+
+  const currentUserInterests = user?.interests.map(i => i.category) || [];
 
   const filteredActivities = selectedInterest
     ? activities.filter(a => a.tags?.includes(selectedInterest))
@@ -36,6 +40,13 @@ const HomePage: React.FC = () => {
 
   const displayedActivities = filteredActivities.slice(0, 4);
   const displayedUsers = filteredUsers.slice(0, 4);
+
+  const handleInterestClick = (interest: string) => {
+    setIsFiltering(true);
+    const newInterest = selectedInterest === interest ? null : interest;
+    setSelectedInterest(newInterest);
+    setTimeout(() => setIsFiltering(false), 100);
+  };
 
   return (
     <div className="min-h-screen bg-bg-primary pb-20">
@@ -88,7 +99,7 @@ const HomePage: React.FC = () => {
             <h2 className="section-title">探索兴趣</h2>
             {selectedInterest && (
               <button
-                onClick={() => setSelectedInterest(null)}
+                onClick={() => handleInterestClick(selectedInterest)}
                 className="text-sm text-accent hover:text-accent-dark transition-colors"
               >
                 清除筛选
@@ -98,8 +109,8 @@ const HomePage: React.FC = () => {
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
             <Tag
               variant={selectedInterest === null ? 'primary' : 'default'}
-              className="cursor-pointer whitespace-nowrap flex-shrink-0"
-              onClick={() => setSelectedInterest(null)}
+              className="cursor-pointer whitespace-nowrap flex-shrink-0 transition-all"
+              onClick={() => handleInterestClick('')}
             >
               全部
             </Tag>
@@ -107,10 +118,8 @@ const HomePage: React.FC = () => {
               <Tag
                 key={interest.value}
                 variant={selectedInterest === interest.value ? 'primary' : 'default'}
-                className="cursor-pointer whitespace-nowrap flex-shrink-0"
-                onClick={() => setSelectedInterest(
-                  selectedInterest === interest.value ? null : interest.value
-                )}
+                className="cursor-pointer whitespace-nowrap flex-shrink-0 transition-all"
+                onClick={() => handleInterestClick(interest.value)}
               >
                 {interest.label}
               </Tag>
@@ -121,7 +130,8 @@ const HomePage: React.FC = () => {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="section-title">
-              推荐同好 {selectedInterest && `· ${selectedInterest}`}
+              推荐同好 {selectedInterest ? `· ${selectedInterest}` : ''}
+              {isFiltering && <span className="text-sm text-text-muted ml-2">筛选中...</span>}
             </h2>
             <button
               onClick={() => navigate('/users')}
@@ -131,7 +141,7 @@ const HomePage: React.FC = () => {
             </button>
           </div>
           <div className="grid grid-cols-1 gap-4 stagger-animation">
-            {usersLoading ? (
+            {usersLoading || isFiltering ? (
               <>
                 <CardSkeleton />
                 <CardSkeleton />
@@ -146,7 +156,11 @@ const HomePage: React.FC = () => {
               </Card>
             ) : (
               displayedUsers.map((userItem) => (
-                <UserCard key={userItem.id} user={userItem} />
+                <UserCard 
+                  key={userItem.id} 
+                  user={userItem}
+                  currentUserInterests={currentUserInterests}
+                />
               ))
             )}
           </div>
@@ -155,7 +169,8 @@ const HomePage: React.FC = () => {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h2 className="section-title">
-              近期活动 {selectedInterest && `· ${selectedInterest}`}
+              近期活动 {selectedInterest ? `· ${selectedInterest}` : ''}
+              {isFiltering && <span className="text-sm text-text-muted ml-2">筛选中...</span>}
             </h2>
             <button
               onClick={() => navigate('/activities')}
@@ -165,7 +180,7 @@ const HomePage: React.FC = () => {
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-animation">
-            {activitiesLoading ? (
+            {activitiesLoading || isFiltering ? (
               <>
                 <ActivitySkeleton />
                 <ActivitySkeleton />

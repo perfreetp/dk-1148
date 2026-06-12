@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Users } from 'lucide-react';
+import { MapPin, Users, Sparkles } from 'lucide-react';
 import { User } from '../../types';
 import { Card } from '../common/Card';
 import { Avatar } from '../common/Avatar';
@@ -10,11 +10,42 @@ import { Button } from '../common/Button';
 interface UserCardProps {
   user: User;
   showFollowButton?: boolean;
+  currentUserInterests?: string[];
+  matchReason?: string;
 }
 
-export const UserCard: React.FC<UserCardProps> = ({ user, showFollowButton = true }) => {
+export const UserCard: React.FC<UserCardProps> = ({ 
+  user, 
+  showFollowButton = true,
+  currentUserInterests = [],
+  matchReason 
+}) => {
   const navigate = useNavigate();
   const primaryInterest = user.interests[0];
+
+  const getMatchReason = () => {
+    if (matchReason) return matchReason;
+    
+    const commonInterests = user.interests
+      .filter(i => currentUserInterests.includes(i.category))
+      .map(i => i.category);
+    
+    if (commonInterests.length > 0) {
+      return `你们都热爱${commonInterests[0]}`;
+    }
+    
+    if (primaryInterest.level === '达人') {
+      return `${primaryInterest.category}达人，愿意分享经验`;
+    }
+    
+    if (primaryInterest.communicationMode === '线下') {
+      return `喜欢线下交流，常在${primaryInterest.location}活动`;
+    }
+    
+    return null;
+  };
+
+  const reason = getMatchReason();
 
   return (
     <Card
@@ -39,6 +70,15 @@ export const UserCard: React.FC<UserCardProps> = ({ user, showFollowButton = tru
           </div>
         </div>
       </div>
+
+      {reason && (
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-accent/5 rounded-lg">
+          <Sparkles className="w-4 h-4 text-accent flex-shrink-0" />
+          <p className="text-sm text-accent font-medium line-clamp-1">
+            {reason}
+          </p>
+        </div>
+      )}
 
       <p className="text-sm text-text-secondary line-clamp-2 mb-3">
         {user.bio}

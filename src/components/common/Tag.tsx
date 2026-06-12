@@ -5,13 +5,15 @@ interface TagProps {
   variant?: 'default' | 'primary' | 'highlight' | 'success' | 'warning';
   size?: 'sm' | 'md';
   className?: string;
+  onClick?: () => void;
 }
 
 export const Tag: React.FC<TagProps> = ({
   children,
   variant = 'default',
   size = 'md',
-  className = ''
+  className = '',
+  onClick
 }) => {
   const variantClasses = {
     default: 'bg-accent/10 text-accent',
@@ -27,7 +29,10 @@ export const Tag: React.FC<TagProps> = ({
   };
 
   return (
-    <span className={`inline-flex items-center rounded-full font-medium ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}>
+    <span 
+      onClick={onClick}
+      className={`inline-flex items-center rounded-full font-medium ${variantClasses[variant]} ${sizeClasses[size]} ${className} ${onClick ? 'cursor-pointer' : ''}`}
+    >
       {children}
     </span>
   );

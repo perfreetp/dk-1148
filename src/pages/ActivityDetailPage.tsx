@@ -13,23 +13,52 @@ import { getDistanceFromUser } from '../utils/locationUtils';
 const ActivityDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { activities, getActivityById, joinActivity, leaveActivity } = useActivityStore();
+  const { activities, currentActivity, getActivityById, joinActivity, leaveActivity, fetchActivities } = useActivityStore();
   const { user } = useAuthStore();
   const [isJoining, setIsJoining] = useState(false);
-
-  const activity = activities.find(a => a.id === id);
-  const currentActivity = activity || null;
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (id && !activity) {
-      getActivityById(id);
-    }
-  }, [id]);
+    const loadActivity = async () => {
+      if (!id) return;
+      
+      setIsLoading(true);
+      
+      if (activities.length === 0) {
+        await fetchActivities();
+      }
+      
+      const activity = activities.find(a => a.id === id);
+      if (activity) {
+        getActivityById(id);
+      } else {
+        await getActivityById(id);
+      }
+      
+      setIsLoading(false);
+    };
+    
+    loadActivity();
+  }, [id, activities.length]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-text-muted">加载中...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentActivity) {
     return (
       <div className="min-h-screen bg-bg-primary flex items-center justify-center">
-        <p className="text-text-muted">加载中...</p>
+        <div className="text-center">
+          <p className="text-text-muted mb-4">活动不存在或已被删除</p>
+          <Button onClick={() => navigate('/activities')}>返回活动列表</Button>
+        </div>
       </div>
     );
   }

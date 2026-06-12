@@ -239,7 +239,7 @@ const InterestManagePage: React.FC = () => {
             label="常用地点"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            placeholder="例如：世纪公园、家中书房"
+            placeholder="例如：世纪公园，家中书房"
             icon={<MapPin className="w-5 h-5" />}
           />
 
